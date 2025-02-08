@@ -19,7 +19,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3 python3-pip
           pip install pylint # For syntax check
-          pip install openpyxl # Only if needed - remove if not
 
       - name: File Existence Check - hello.py
         id: file-existence-hello
@@ -54,15 +53,16 @@ jobs:
         with:
           test-name: Intro.txt Format Check
           command: |
-            intro_regex="^Name: .+\nCourse: .+\nInterests in programming: .+$"
-            if grep -qP "$intro_regex" intro.txt; then
-              echo "Format Passed"
+            intro_content=$(cat intro.txt | tr -d '\n')  # Remove newlines
+            intro_regex="^Name:.*Course:.*Interests in programming:.*$" # Regex without newlines
+            if echo "$intro_content" | grep -qP "$intro_regex"; then
+              echo "::success::Intro.txt format is correct"
             else
-              exit 1 # Fail if format is incorrect
+              echo "::failure::Intro.txt format is incorrect"
+              exit 1
             fi
           timeout: 10
           max-score: 20
-
 
       - name: Hello.py Output Check
         id: output-check-hello
@@ -86,9 +86,18 @@ jobs:
           test-name: Commit Message Check
           command: |
             commit_message=$(git log -1 --pretty=%B)
-            if [[ -n "$commit_message" ]]; then
-              echo "Message Passed"
+            if [ -n "$commit_message" ]; then
+              # Check for a specific message (quote the string!)
+              if [ "$commit_message" = "My first Python program" ]; then  # Quoted string
+                echo "::success::Correct commit message."
+              elif [ "$commit_message" != "" ]; then # Check for any non-empty message
+                echo "::success::Commit message is present (but not the expected one)."
+              else
+                echo "::failure::Incorrect commit message."
+                exit 1
+              fi
             else
+              echo "::failure::Commit message is missing."
               exit 1
             fi
           timeout: 10
